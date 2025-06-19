@@ -9,6 +9,14 @@ st.title("Population Trends Data Preprocessing")
 # 파일 업로드
 uploaded_file = st.file_uploader("CSV 파일을 업로드하세요", type="csv")
 
+import streamlit as st
+import pandas as pd
+import io
+
+st.title("Sejong Region Data Analysis")
+
+uploaded_file = st.file_uploader("Upload population_trends.csv", type="csv")
+
 if uploaded_file is not None:
     # CSV 파일 읽기
     df = pd.read_csv(uploaded_file)
@@ -16,42 +24,42 @@ if uploaded_file is not None:
     st.subheader("원본 데이터 미리보기")
     st.dataframe(df.head())
 
-  # 안전하게 '행정구역' 열이 존재할 때만 필터링
+    # '세종' 필터링 - '행정구역' 또는 '지역' 기준
     if '행정구역' in df.columns:
         sejong_df = df[df['행정구역'].astype(str).str.contains('세종', na=False)].copy()
     elif '지역' in df.columns:
         sejong_df = df[df['지역'].astype(str).str.contains('세종', na=False)].copy()
     else:
         st.warning("No column named '행정구역' or '지역' was found in the dataset.")
-        sejong_df = pd.DataFrame()  # 빈 DataFrame 처리
+        sejong_df = pd.DataFrame()
 
+    if not sejong_df.empty:
+        # '-' 기호를 0으로 대체
+        sejong_df = sejong_df.replace('-', 0)
 
+        # 숫자로 변환할 열 목록
+        numeric_columns = ['인구', '출생아수(명)', '사망자수(명)']
 
-    # '-' 기호를 0으로 대체
-    sejong_df.replace('-', 0, inplace=True)
+        for col in numeric_columns:
+            if col in sejong_df.columns:
+                sejong_df[col] = pd.to_numeric(sejong_df[col], errors='coerce').fillna(0)
+            else:
+                st.warning(f"Column '{col}' not found in dataset.")
+                sejong_df[col] = 0
 
-    # 숫자로 변환할 열 목록
-    numeric_columns = ['인구', '출생아수(명)', '사망자수(명)']
-    
-    # 열을 숫자(float)로 변환
-    for col in numeric_columns:
-        sejong_df[col] = pd.to_numeric(sejong_df[col], errors='coerce').fillna(0)
+        st.subheader("전처리된 '세종' 지역 데이터 미리보기")
+        st.dataframe(sejong_df.head())
 
-    st.subheader("전처리된 '세종' 지역 데이터 미리보기")
-    st.dataframe(sejong_df.head())
+        st.subheader("요약 통계 (describe())")
+        st.dataframe(sejong_df.describe().style.format("{:,.0f}"))
 
-    # 데이터 요약 통계
-    st.subheader("요약 통계 (describe())")
-    st.dataframe(sejong_df.describe())
+        st.subheader("데이터프레임 정보 (info())")
+        buffer = io.StringIO()
+        sejong_df.info(buf=buffer)
+        st.text(buffer.getvalue())
 
-    # info 출력 - 문자열로 출력
-    buffer = io.StringIO()
-    sejong_df.info(buf=buffer)
-    info_str = buffer.getvalue()
-
-    st.subheader("데이터프레임 정보 (info())")
-    st.text(info_str)
-
+    else:
+        st.warning("세종 지역 데이터가 없습니다.")
 else:
     st.info("CSV 파일을 업로드해 주세요.")
 
@@ -415,3 +423,50 @@ if uploaded_file:
 
 else:
     st.warning("Please upload a valid CSV file.")
+import streamlit as st
+import pandas as pd
+import io
+
+st.title("Sejong Region Data Analysis")
+
+# 고유 key 부여
+uploaded_file = st.file_uploader("Upload population_trends.csv", type="csv", key="uploader_sejong")
+
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+
+    st.subheader("원본 데이터 미리보기")
+    st.dataframe(df.head())
+
+    # '세종' 필터링
+    if '행정구역' in df.columns:
+        sejong_df = df[df['행정구역'].astype(str).str.contains('세종', na=False)].copy()
+    elif '지역' in df.columns:
+        sejong_df = df[df['지역'].astype(str).str.contains('세종', na=False)].copy()
+    else:
+        st.warning("No column named '행정구역' or '지역' was found.")
+        sejong_df = pd.DataFrame()
+
+    if not sejong_df.empty:
+        sejong_df = sejong_df.replace('-', 0)
+
+        numeric_columns = ['인구', '출생아수(명)', '사망자수(명)']
+        for col in numeric_columns:
+            if col in sejong_df.columns:
+                sejong_df[col] = pd.to_numeric(sejong_df[col], errors='coerce').fillna(0)
+            else:
+                st.warning(f"Column '{col}' not found.")
+                sejong_df[col] = 0
+
+        st.subheader("전처리된 '세종' 지역 데이터 미리보기")
+        st.dataframe(sejong_df.head())
+
+        st.subheader("요약 통계 (describe())")
+        st.dataframe(sejong_df.describe().style.format("{:,.0f}"))
+
+        st.subheader("데이터프레임 정보 (info())")
+        buffer = io.StringIO()
+        sejong_df.info(buf=buffer)
+        st.text(buffer.getvalue())
+    else:
+        st.warning("세종 지역 데이터가 없습니다.")
