@@ -194,7 +194,7 @@ class Logout:
 # EDA 페이지 클래스
 # ---------------------
 class EDA:
-import streamlit as st
+    import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
