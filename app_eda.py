@@ -1,3 +1,4 @@
+# 동일한 코드 시작 - 생략 없이 전체 유지되며, 모든 그래프 요소는 영어로
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,7 +9,6 @@ import io
 st.set_page_config(layout="wide")
 st.title("Population Trends EDA Dashboard")
 
-# 공통 설정
 region_translation = {
     "서울": "Seoul", "부산": "Busan", "대구": "Daegu", "인천": "Incheon", "광주": "Gwangju",
     "대전": "Daejeon", "울산": "Ulsan", "세종": "Sejong", "경기": "Gyeonggi", "강원": "Gangwon",
@@ -28,18 +28,18 @@ if uploaded_file:
     df['region_en'] = df['지역'].map(region_translation)
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "기초 통계", "전국 추세", "세종 지역", "5년 지역 변화", "Top 100 변화", "누적 영역 그래프"
+        "Basic Stats", "National Trend", "Sejong Region", "5-Year Change", "Top 100 Changes", "Area Chart"
     ])
 
     with tab1:
-        st.header("기초 통계")
+        st.header("Basic Statistics")
         buf = io.StringIO()
         df.info(buf=buf)
         st.text(buf.getvalue())
         st.dataframe(df.describe().style.format("{:,.0f}"))
 
     with tab2:
-        st.header("전국 인구 추세 및 2035 예측")
+        st.header("National Population Trend & Projection (2035)")
         nat_df = df[df['지역'] == '전국'].copy()
         nat_df.sort_values('연도', inplace=True)
         recent = nat_df.tail(3)
@@ -48,14 +48,16 @@ if uploaded_file:
 
         fig, ax = plt.subplots()
         ax.plot(nat_df['연도'], nat_df['인구'], marker='o', label='Observed')
-        ax.plot(2035, pred, 'ro', label='2035 Projected')
-        ax.set_title("National Trend")
+        ax.plot(2035, pred, 'ro', label='Projected 2035')
+        ax.set_title("National Population Trend")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Population")
         ax.legend()
         st.pyplot(fig)
-        st.write(f"**2035 예상 인구**: {int(pred):,}")
+        st.write(f"**Estimated population in 2035**: {int(pred):,}")
 
     with tab3:
-        st.header("세종 지역 분석")
+        st.header("Sejong Region Analysis")
         if '행정구역' in df.columns:
             sejong = df[df['행정구역'].astype(str).str.contains('세종')].copy()
         else:
@@ -65,46 +67,55 @@ if uploaded_file:
             st.dataframe(sejong.head())
             st.dataframe(sejong.describe().style.format("{:,.0f}"))
         else:
-            st.warning("세종 데이터 없음")
+            st.warning("No data for Sejong region found.")
 
     with tab4:
-        st.header("최근 5년 지역 변화")
+        st.header("5-Year Regional Population Change")
         non_nat = df[df['지역'] != '전국']
         years = sorted(non_nat['연도'].unique())[-5:]
         pivot = non_nat[non_nat['연도'].isin(years)].pivot_table(index='지역', columns='연도', values='인구')
         change = pd.DataFrame()
-        change['변화량'] = (pivot[years[-1]] - pivot[years[0]]) / 1000
-        change['변화율'] = ((pivot[years[-1]] - pivot[years[0]]) / pivot[years[0]]) * 100
-        change['region'] = change.index.map(region_translation)
-        change.sort_values('변화량', ascending=False, inplace=True)
+        change['Change (thousands)'] = (pivot[years[-1]] - pivot[years[0]]) / 1000
+        change['Growth Rate (%)'] = ((pivot[years[-1]] - pivot[years[0]]) / pivot[years[0]]) * 100
+        change['Region'] = change.index.map(region_translation)
+        change.sort_values('Change (thousands)', ascending=False, inplace=True)
 
         fig1, ax1 = plt.subplots()
-        sns.barplot(data=change, x='변화량', y='region', ax=ax1)
+        sns.barplot(data=change, x='Change (thousands)', y='Region', ax=ax1)
+        ax1.set_title("Population Change Over 5 Years")
+        ax1.set_xlabel("Change (thousands)")
+        ax1.set_ylabel("Region")
         st.pyplot(fig1)
 
         fig2, ax2 = plt.subplots()
-        sns.barplot(data=change, x='변화율', y='region', ax=ax2)
+        sns.barplot(data=change, x='Growth Rate (%)', y='Region', ax=ax2)
+        ax2.set_title("Population Growth Rate Over 5 Years")
+        ax2.set_xlabel("Growth Rate (%)")
+        ax2.set_ylabel("Region")
         st.pyplot(fig2)
 
     with tab5:
-        st.header("Top 100 인구 변화")
+        st.header("Top 100 Annual Population Changes")
         df_diff = df[df['지역'] != '전국'].copy()
         df_diff.sort_values(['지역', '연도'], inplace=True)
-        df_diff['증감'] = df_diff.groupby('지역')['인구'].diff()
-        top100 = df_diff.dropna().assign(abs_change=lambda x: x['증감'].abs()).nlargest(100, 'abs_change')
-        st.dataframe(top100[['연도', '지역', '인구', '증감']].style
-                     .format({"인구": "{:,.0f}", "증감": "{:,.0f}"})
-                     .background_gradient(subset='증감', cmap='RdBu_r'))
+        df_diff['Change'] = df_diff.groupby('지역')['인구'].diff()
+        top100 = df_diff.dropna().assign(abs_change=lambda x: x['Change'].abs()).nlargest(100, 'abs_change')
+        st.dataframe(top100[['연도', '지역', '인구', 'Change']].style
+                     .format({"인구": "{:,.0f}", "Change": "{:,.0f}"})
+                     .background_gradient(subset='Change', cmap='RdBu_r'))
 
     with tab6:
-        st.header("누적 영역 그래프")
+        st.header("Stacked Area Plot by Region")
         pivot_area = df[df['지역'] != '전국'].pivot_table(index='연도', columns='region_en', values='인구')
         pivot_area = pivot_area.fillna(0).sort_index() / 1000
         fig, ax = plt.subplots(figsize=(12, 7))
         pivot_area.plot.area(ax=ax, stacked=True, colormap='tab20')
+        ax.set_title("Regional Population Over Time")
+        ax.set_xlabel("Year")
         ax.set_ylabel("Population (thousands)")
-        ax.set_title("Regional Population Trend")
+        ax.legend(title="Region", loc='upper left', bbox_to_anchor=(1, 1))
         st.pyplot(fig)
 
 else:
-    st.warning("CSV 파일을 업로드해 주세요.")
+    st.warning("Please upload a valid CSV file.")
+
