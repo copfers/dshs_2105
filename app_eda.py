@@ -16,8 +16,16 @@ if uploaded_file is not None:
     st.subheader("원본 데이터 미리보기")
     st.dataframe(df.head())
 
-    # '세종' 지역 필터링
-    sejong_df = df[df['행정구역'].str.contains('세종', na=False)].copy()
+  # 안전하게 '행정구역' 열이 존재할 때만 필터링
+    if '행정구역' in df.columns:
+        sejong_df = df[df['행정구역'].astype(str).str.contains('세종', na=False)].copy()
+    elif '지역' in df.columns:
+        sejong_df = df[df['지역'].astype(str).str.contains('세종', na=False)].copy()
+    else:
+        st.warning("No column named '행정구역' or '지역' was found in the dataset.")
+        sejong_df = pd.DataFrame()  # 빈 DataFrame 처리
+
+
 
     # '-' 기호를 0으로 대체
     sejong_df.replace('-', 0, inplace=True)
